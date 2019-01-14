@@ -396,3 +396,5 @@ Things to try:
 * Come with another model.  My payday is at the beginning of each month, so I'm more cash strapped at the end of each month.  Maybe that makes me write more emails, because I'm working harder, because I can't afford to be out and about avoiding work. Or maybe somehow having money makes me send more email.  Write a model to test that hypothesis. 
 
 * Overfitting is a problem in model comparison, especially with models that have lots of parameters.  Try fitting on a "training" subset of the data (maybe only the first three weeks), and then generating your deviance on the remaining "clean" "test" data. Does that change anything?  How does the deviance tend to differ between training and test data? Why?  Is the difference between train and test bigger or smaller on more complex models? Why?
+
+* Bayesian approaches tend to be the next step after this.  For introductions, you can check out books by people like Andrew Gelman or, for an especially friendly intro within psych, John Kruschke.

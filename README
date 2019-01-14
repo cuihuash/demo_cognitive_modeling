@@ -1,0 +1,4 @@
+This demo is an elementary introduction to computational modeling, based on my
+email habits.  To run it you need Rstudio (to handle `.Rmd` files) and the accompanying datafile `2018emailssent.csv`. You will also have installed `ggplot` with the command `install.packages("ggplot2")`. We will use `R`'s `optim` function (which is so valuable that it comes with base `R`) to find maximum likelihood fits.  Overall, we will view data, brainstorm models that could fit it, find the best parameter values for each model, plot the resulting fits, and run the stats to show which models really (statistically) are better than the others.
+
+To start, download everything and open the `.Rmd` file in `R`, or open the `.html` file in your browser.

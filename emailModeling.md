@@ -11,20 +11,34 @@ output:
 This demo is an elementary introduction to computational modeling.  To run it you need Rstudio (to handle `.Rmd` files) and the accompanying datafile `2018emailssent.csv`. You will also have installed `ggplot` with the command `install.packages("ggplot2")`. We will use `R`'s `optim` function (which is so valuable that it comes with base `R`) to find maximum likelihood fits.  Overall, we will view data, brainstorm models that could fit it, find the best parameter values for each model, plot the resulting fits, and run the stats to show which models really (statistically) are better than the others.
 
 ## Skim the data
-```{r include=FALSE}
-library(ggplot2)
-```
+
 
 First thing first, run, show, and plot the data. This dataset is a recording of my email habits, taken from a few months ago. The important column is `nemails`, showing the number of emails I wrote per day.  `dom` is day of month, and `dow` is day of week, with 1 equal to Sunday.
 
-```{r}
+
+```r
 ### Load
 dat <- read.csv("201810emailssent.csv")
 names(dat) <- c("year", "month", "dom", "dow", "nemails")
 ### Preview
 print(head(dat))
+```
+
+```
+##   year month dom dow nemails
+## 1 2018    10  30   3       4
+## 2 2018    10  29   2       9
+## 3 2018    10  28   1       8
+## 4 2018    10  27   7       1
+## 5 2018    10  26   6      10
+## 6 2018    10  25   5       7
+```
+
+```r
 ggplot(data=dat) + geom_point(aes(x=dom, y=nemails)) + ylab("# of emails per day") + scale_x_continuous("Day of month", breaks=1:31)
 ```
+
+![](emailModeling_files/figure-html/unnamed-chunk-2-1.png)<!-- -->
 
 ## The point of modeling
 
@@ -41,7 +55,8 @@ Each function/theory below takes a list of parameter values to try out, and the 
 The key idea behind this style of modeling is that, rather than write a model that tries to guess what's going to happen, we write a model that can assign a high or low probability to everything that could happen.  Then, if the things that do happen line up with the things the model thought more likely, that model ends up with a higher likelihood, a lower deviance, and more evidence behind it.
 
 This first function tests the theory that I have an average number of emails I'll send every day, above or below which I vary.
-```{r}
+
+```r
 emailsGaussian <- function(params, dat) {
   ### sanity checks
   if(is.logical(params) & all(!params)) return(10000000)
@@ -68,41 +83,152 @@ The other theories/functions will look very similar. They'll differ only in the 
 ## What it means to fit a model
 
 How do we find the best specific values for the best fit to the data? We could try out values ourselves and see if we can find the best (lowest) values:
-```{r}
+
+```r
 emailsGaussian(params=c(mu=0, sigma2=1), dat=dat)
+```
+
+```
+## [1] 2321.1
+```
+
+```r
 emailsGaussian(params=c(mu=5, sigma2=1), dat=dat)
+```
+
+```
+## [1] 791.14
+```
+
+```r
 emailsGaussian(params=c(mu=7, sigma2=1), dat=dat) # ... closer ...
+```
+
+```
+## [1] 599.14
+```
+
+```r
 emailsGaussian(params=c(mu=8, sigma2=1), dat=dat)
+```
+
+```
+## [1] 593.14
+```
+
+```r
 emailsGaussian(params=c(mu=9, sigma2=1), dat=dat) # ... too far, back up behind 8 ...
+```
+
+```
+## [1] 647.14
+```
+
+```r
 emailsGaussian(params=c(mu=7.5, sigma2=1), dat=dat) # ... close enough for now. Now focus on the right variance ....
+```
+
+```
+## [1] 588.64
+```
+
+```r
 emailsGaussian(params=c(mu=7.5, sigma2=0.5), dat=dat) # ... um, OK, don't go smaller ...
+```
+
+```
+## [1] 1101.3
+```
+
+```r
 emailsGaussian(params=c(mu=7.5, sigma2=0.5), dat=dat)
+```
+
+```
+## [1] 1101.3
+```
+
+```r
 emailsGaussian(params=c(mu=7.5, sigma2=5), dat=dat) # ... bigger ...
+```
+
+```
+## [1] 210.12
+```
+
+```r
 emailsGaussian(params=c(mu=7.5, sigma2=10), dat=dat)
+```
+
+```
+## [1] 177.56
+```
+
+```r
 emailsGaussian(params=c(mu=7.5, sigma2=20), dat=dat)
+```
+
+```
+## [1] 171.68
+```
+
+```r
 emailsGaussian(params=c(mu=7.5, sigma2=30), dat=dat) # ... too far, back up ...
+```
+
+```
+## [1] 174.96
+```
+
+```r
 emailsGaussian(params=c(mu=7.5, sigma2=15), dat=dat) # stop here, for now.
+```
+
+```
+## [1] 171.94
 ```
 
 ... and so on. That was a lot. `optim` will do all that for us, finding the best combination for the lowest score.  The only good reason to do it by hand the way we just did it is to be thankful that `optim` is going to do it for us way faster and better.
 
 ## Fitting a model
 
-```{r}
+
+```r
 fitgaus <- optim(c(mu=0, sigma2=1), emailsGaussian, dat=dat)
 ```
 `optim` is the magic that tries out lots of values to we what's the best.  We start it out with guess values and it goes from there.  
 
 The object returned by `optim` includes `value`, which contains the best score that was found, and `par`, which has the parameter values that contained that score. More specifically, `value` is the deviance statistic representing how "good" the fit is.  It won't be so meaningful until we've compared it to the deviances produced by other theories.  But the parameter values are meaningful now. Knowing what we know about statistics, if everything went right the best mean that `optim` found should be equal to the mean of the data.
 
-```{r}
+
+```r
 fitgaus$value # pretty close to the 7.5 and 15 that we found ...
+```
+
+```
+## [1] 171.47
+```
+
+```r
 fitgaus$par # ... but just a smidge better.
+```
+
+```
+##      mu  sigma2 
+##  7.5989 17.7798
+```
+
+```r
 mean(dat$nemails) # Close! The me optim found was Just 0.0011 off from this.
 ```
 
+```
+## [1] 7.6
+```
+
 We can also view the fit.
-```{r}
+
+```r
 gausmu <- fitgaus$par["mu"] #extract the mean
 gauslow <- (gausmu - fitgaus$par["sigma2"]^0.5) #illustrate the first standard deviation windoww
 gaushigh <- (gausmu + fitgaus$par["sigma2"]^0.5)
@@ -110,13 +236,16 @@ ggplot(data=dat) + geom_point(aes(x=dom, y=nemails)) + ylab("# of emails per day
      geom_hline(yintercept=gausmu, color="blue") + geom_ribbon(aes(x=dom, ymin=gauslow, ymax=gaushigh), fill="blue", alpha=0.1) #best Gaussian theory
 ```
 
+![](emailModeling_files/figure-html/unnamed-chunk-7-1.png)<!-- -->
+
 Not bad ... now let's keep moving.
 
 ## Another model
 
 This next function tests the unlikely theory that I have some internal email clock that varies over the week, making my email habits follow a sine wave. Making a sine wave fit the dots above will involve lots of stretching and moving around.  We'll have to move the sine wave up and down (`intercept`), stretch it up and down (`amplitude`), and shift it side to side (`phase`). `optim` will do all that four us, with an eye to the values that look most like the data.  We could also stretch it side to side (`frequency`), but I'm fixing the frequency at 4, to represent four weeks of the month. That's a lot of parameters.  
 
-```{r}
+
+```r
 emailsPeriodic <- function(params, dat) {
   ### sanity checks
   if(is.logical(params) & all(!params)) return(10000000)
@@ -140,16 +269,22 @@ emailsPeriodic <- function(params, dat) {
 }
 ```
 Starting from sane values, `optim` will tell us what's the best combination of values.  Here is the best fit for the periodic model, starting from slightly arbitrary initial values:
-```{r}
+
+```r
 fitperiod <- optim(c(intercept=0, amplitude=1, phase=3.5, sigma2=1), emailsPeriodic, dat=dat)
 fitperiod$value
+```
+
+```
+## [1] 163.63
 ```
 
 ## Comparing unrelated models with Bayes Factor
 
 That value of deviance is lower than the Gaussian model's deviance. That's good.  But is it lower by a lot? A little? And is it "really" better, or is it only better because it has more parameters---more ways to slip around so that the data fits it?  These are every different models, so we can't get a `p`-value to tell us that the difference is significant, but we can calculate a more general comparative statistic, Bayes Factor, which tells us how many times better the one is than the other. A nice thing about it is that it know how to penalize the model with more parameters for being more flexible.  This is like Occam's razor: if you have two models that fit equally well, and one has fewer parameters, you should favor it.  
 
-```{r}
+
+```r
 ### nonnested model comparison
 n <- nrow(dat)
 bic <- list()
@@ -158,12 +293,17 @@ bic$prd <- fitperiod$value + log(n)*4
 # Bayes Facgtor ~ exp( (BIC_1 - BIC_0)/2 )
 exp( (bic$gaus - bic$prd) / 2 ) ### compute Bayes Factor
 ```
+
+```
+## [1] 1.6783
+```
 The  more complex model is about 1.5 times better, which isn't very much.  We can't say more than that for this comparison, but it's enough to say that a reasonable person might favor the simpler model, even if it's a slightly worse fit.  Later we'll learn what kind of comparisons produce real `p`-values, which let you make stronger model comparison claims.
 
 ## Thinking about the data and generating more models
 
 Now, what were the parameter values?  Let's show them and plot them.
-```{r}
+
+```r
 fp <- fitperiod$par
 dat$modPrd <- fp["intercept"] + fp["amplitude"] * sin( fp["phase"] + 4 * seq(from=0, to=2*pi, length.out=nrow(dat)) )
 dat$modPrd_l <- dat$modPrd - fp['sigma2']^0.5
@@ -173,11 +313,14 @@ ggplot(data=dat) + geom_point(aes(x=dom, y=nemails)) + ylab("# of emails per day
      geom_line(aes(x=dom, y=modPrd), color="green") + geom_ribbon(aes(x=dom, ymin=modPrd_l, ymax=modPrd_h), fill="green", alpha=0.1)  #periodic
 ```
 
+![](emailModeling_files/figure-html/unnamed-chunk-11-1.png)<!-- -->
+
 Putting a vertical line at each Saturday shows us that the periodicity fits the weekends as low points in terms of output.  If this is true, the implications are worrisome: first-year faculty shouldn't even know what weekends are.
 
 Regardless, it's interesting.  Is a sine wave really the best thing? What if we just fit different normal curves to weekends and week days.  The next function will have two sets of means and standard deviations (`mu`s and `sigma`s), one for during the week, and the other for during the weekend.
 
-```{r}
+
+```r
 emailsGaussianWeekends <- function(params, dat) {
   ### sanity checks
   if(is.logical(params) & all(!params)) return(10000000)
@@ -205,8 +348,22 @@ emailsGaussianWeekends <- function(params, dat) {
 }
 fitwknd <- optim(c(mu1=0, sigma21=1, mu2=0, sigma22=1), emailsGaussianWeekends, dat=dat)
 fitwknd$value
-fitwknd$par
+```
 
+```
+## [1] 162.85
+```
+
+```r
+fitwknd$par
+```
+
+```
+##     mu1 sigma21     mu2 sigma22 
+##  8.8195 15.4188  4.2526  8.9443
+```
+
+```r
 dat$modWknd <- ifelse(dat$dow %in% 2:6, fitwknd$par["mu1"], fitwknd$par["mu2"] )
 dat$modWknd_l <- ifelse(dat$dow %in% 2:6, dat$modWknd - fitwknd$par["sigma21"]^0.5,  dat$modWknd - fitwknd$par["sigma22"]^0.5)
 dat$modWknd_h <- ifelse(dat$dow %in% 2:6, dat$modWknd + fitwknd$par["sigma21"]^0.5,  dat$modWknd + fitwknd$par["sigma22"]^0.5)
@@ -214,6 +371,8 @@ ggplot(data=dat) + geom_point(aes(x=dom, y=nemails)) + ylab("# of emails per day
      geom_line(aes(x=dom, y=modPrd), color="green") + geom_ribbon(aes(x=dom, ymin=modPrd_l, ymax=modPrd_h), fill="green", alpha=0.1) + #periodic
      geom_line(aes(x=dom, y=modWknd), color="red") + geom_ribbon(aes(x=dom, ymin=modWknd_l, ymax=modWknd_h), fill="red", alpha=0.1)  #two lines
 ```
+
+![](emailModeling_files/figure-html/unnamed-chunk-12-1.png)<!-- -->
 
 We're plotting it here against the periodic fit.  Looking at the deviance scores in `fit$value`, it looks like they both fit the data about as well.  It's possible that with more data we'd be able to distinguish them and spot a winner.
 
@@ -223,7 +382,8 @@ So here's a question.  I fit separate variances for the weekday and weekend and 
 
 Here's a 3-parameter version of the weekend model.  
 
-```{r}
+
+```r
 emailsGaussianWeekends_red <- function(params, dat) {
   ### sanity checks
   if(is.logical(params) & all(!params)) return(10000000)
@@ -248,15 +408,42 @@ emailsGaussianWeekends_red <- function(params, dat) {
 ```
 Now let's run it and compare it to the full model. We'll use a $\chi^2$ test.
 
-```{r}
+
+```r
 fitwknd_red <- optim(c(mu1=0, mu2=0, sigma2=1), emailsGaussianWeekends_red, dat=dat)
 fitwknd_red$par
+```
+
+```
+##     mu1     mu2  sigma2 
+##  8.8226  4.2508 13.6985
+```
+
+```r
 fitwknd_red$value
+```
+
+```
+## [1] 163.64
+```
+
+```r
 ### nested model comparison
 ### from https://kevintshoemaker.github.io/NRES-746/LECTURE8.html
 deviance <- fitwknd_red$value - fitwknd$value
 deviance >= qchisq(0.95,1) ### test, 1 df because one paramter difference
+```
+
+```
+## [1] FALSE
+```
+
+```r
 1-pchisq(deviance,1) ###p-value
+```
+
+```
+## [1] 0.37214
 ```
 It looks like these models are not significantly different. By Occam's razor, the data favor the simpler model, and we can't support the theory that variance in email sending will differ between the weekdays and weekends.
 
@@ -266,10 +453,22 @@ Comparing the models from a sanity checking perspective, it's reassuring that th
 
 Going further, the first Gaussian model is sort of a reduced version of the model with weekends, in which not only the `sigma`s but also the `mu`s are forced to be the same.  So: does the extra `mu` parameter make a difference?  Should a model of emails include the idea of weekends? Even though they are hard to tell apart in terms of fit, a nice advantage of this weekend model over the periodic one is that it let's us nest the first model in a way that provides a `p`-value. Let's find out if one extra parameter for weekends gives an improvement.
 
-```{r}
+
+```r
 deviance <- fitgaus$value - fitwknd_red$value
 deviance >= qchisq(0.95,1) ### test, 1 df because one paramter difference
+```
+
+```
+## [1] TRUE
+```
+
+```r
 1-pchisq(deviance,1) ###p-value
+```
+
+```
+## [1] 0.005151
 ```
 
 Well that's pretty signficant.  
@@ -286,7 +485,8 @@ All of this was with `optim` running just once.  But for complex models you usua
 
 Here are functions the randomly generate initial conditions for each model above:
 
-```{r}
+
+```r
 pgenGauss <- function() {
     return( c( mu=runif(1, -20, 20), sigma2=runif(1, -10^2, 10^2)) )
 }
@@ -304,7 +504,8 @@ pgenPeriod <- function() {
 
 and this code runs `optim` lots of times and picks the best fit
 
-```{r}
+
+```r
 ### many runs of optim
 noptim <- function(n, parf, fn, dat) {
     fits <- lapply(1:n, function(x) optim(par=parf(), fn=fn, dat=dat ) )
@@ -316,24 +517,83 @@ noptim <- function(n, parf, fn, dat) {
 
 Let's use it to see if we get the same fits for the models from above. 
 
-```{r}
+
+```r
 nruns <- 500
 fitgaus <- noptim(n=nruns, pgenGauss, emailsGaussian, dat=dat)
 fitgaus$value
+```
+
+```
+## [1] 171.47
+```
+
+```r
 fitgaus$par
+```
+
+```
+##      mu  sigma2 
+##  7.5998 17.7725
+```
+
+```r
 fitwknd <- noptim(n=nruns, pgenGauss3, emailsGaussianWeekends_red, dat=dat)
 fitwknd_red <- noptim(n=nruns, pgenGauss4, emailsGaussianWeekends, dat=dat)
 fitwknd$value
+```
+
+```
+## [1] 163.64
+```
+
+```r
 fitwknd$par
+```
+
+```
+##    mu1    mu2 sigma2 
+##  8.818  4.250 13.692
+```
+
+```r
 fitwknd_red$value
+```
+
+```
+## [1] 162.85
+```
+
+```r
 fitwknd_red$par
+```
+
+```
+##     mu1     mu1 sigma21 sigma22 
+##  8.8183 15.4208  4.2500  8.9367
+```
+
+```r
 fitperiod <- noptim(n=nruns, pgenPeriod, emailsPeriodic, dat=dat)
 fitperiod$value
+```
+
+```
+## [1] 163.63
+```
+
+```r
 fitperiod$par
 ```
 
+```
+## intercept amplitude     phase    sigma2 
+##    7.6331    2.8966    3.4926   13.6875
+```
+
 Looks OK.  Now lets use it to add a parameter to the periodic  function, one that stretches it horizontally.  
-```{r}
+
+```r
 emailsPeriodic_full <- function(params, dat) {
   ### sanity checks
   if(is.logical(params) & all(!params)) return(10000000)
@@ -360,27 +620,68 @@ pgenPeriod5 <- function() {
 ```
 
 Does that improve the fit? Let's run `optim` lots of times to find a good set of parameters. (We'll also do a single run with guessed values.  The deviance is higher, suggesting that for this more complex model, you can't just run `optim` once).
-```{r}
+
+```r
 fitperiod_full <- optim(c(intercept=0, amplitude=1, phase=3.5, sigma2=1, frequency=4), emailsPeriodic_full, dat=dat)
 fitperiod_full$par
+```
+
+```
+## intercept amplitude     phase    sigma2 frequency 
+##  0.644994 -7.654274  5.393685 -0.091927 17.232884
+```
+
+```r
 fitperiod_full$value
+```
+
+```
+## [1] 170.72
+```
+
+```r
 fitperiod_full <- noptim(n=nruns, pgenPeriod5, emailsPeriodic_full, dat=dat)
 fitperiod_full$par
+```
+
+```
+## intercept amplitude     phase frequency    sigma2 
+##    7.6214    3.4738   58.1677  -24.4825   11.5282
+```
+
+```r
 fitperiod_full$value
+```
+
+```
+## [1] 158.49
 ```
 
 Now let's compare the full and reduced model
 
-```{r}
+
+```r
 deviance <- fitperiod$value - fitperiod_full$value
 deviance >= qchisq(0.95,1) ### test, 1 df because one paramter difference
+```
+
+```
+## [1] TRUE
+```
+
+```r
 1-pchisq(deviance,1) ###p-value
+```
+
+```
+## [1] 0.023332
 ```
 
 It's significant.  Let's compare them visually to see what stretching bought us.  The new (orange) cycle is a little narrower Maybe it's because 31 days isn't exactly 4 cycles? Maybe it's something else. Or maybe it's not really real.
 
 
-```{r}
+
+```r
 fpf <- fitperiod_full$par
 dat$modPrdf <- fpf["intercept"] + fpf["amplitude"] * sin( fpf["phase"] + fpf["frequency"]  * seq(from=0, to=2*pi, length.out=nrow(dat)) )
 dat$modPrdf_l <- dat$modPrdf - fpf['sigma2']^0.5
@@ -390,6 +691,8 @@ ggplot(data=dat) + geom_point(aes(x=dom, y=nemails)) + ylab("# of emails per day
      geom_line(aes(x=dom, y=modPrd), color="green") + geom_ribbon(aes(x=dom, ymin=modPrd_l, ymax=modPrd_h), fill="green", alpha=0.1) +  #periodic
      geom_line(aes(x=dom, y=modPrdf), color="orange") + geom_ribbon(aes(x=dom, ymin=modPrdf_l, ymax=modPrdf_h), fill="orange", alpha=0.1)  #periodic
 ```
+
+![](emailModeling_files/figure-html/unnamed-chunk-22-1.png)<!-- -->
 
 *  *  *  *
 
